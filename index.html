@@ -1,0 +1,138 @@
+<html>
+
+
+<script src="./bower_components/influent/dist/influent.js"></script>
+<link rel="stylesheet" href="style.css">
+
+<br />
+
+<form>
+
+  <b>Record:</b><br>
+	<!-- Rounded switch -->
+	<label class="switch">
+	  <input type="checkbox" id="record">
+	  <div class="slider round"></div>
+	</label>
+
+	<br />
+	
+  <b>Label:</b><br>
+  <input type="text" id="label"><br>
+</form>
+
+<br />
+
+<p id="debug">debug</p>
+
+<div class="main">
+  <h2>Device Orientation</h2>
+  <table>
+    <tr>
+      <td>Event Supported</td>
+      <td id="doEvent"></td>
+    </tr>
+    <tr>
+      <td>Tilt Left/Right [gamma]</td>
+      <td id="doTiltLR"></td>
+    </tr>
+    <tr>
+      <td>Tilt Front/Back [beta]</td>
+      <td id="doTiltFB"></td>
+    </tr>
+    <tr>
+      <td>Direction [alpha]</td>
+      <td id="doDirection"></td>
+    </tr>
+   </table>
+</div>
+
+<script>
+var measurement_tag = "";
+
+document.getElementById('record').onchange = function() {
+if(this.checked) {
+    measurement_tag = Math.floor(Date.now() / 1000) + "";
+  } else {
+    // ...
+  }
+}
+
+if (window.DeviceOrientationEvent) {
+document.getElementById("debug").innerHTML = "Not recording."
+  // Listen for the deviceorientation event and handle the raw data
+  window.addEventListener('deviceorientation', function(eventData) {
+    // gamma is the left-to-right tilt in degrees, where right is positive
+    var tiltLR = eventData.gamma;
+
+    // beta is the front-to-back tilt in degrees, where front is positive
+    var tiltFB = eventData.beta;
+
+    // alpha is the compass direction the device is facing in degrees
+    var dir = eventData.alpha
+
+    // call our orientation event handler
+    deviceOrientationHandler(tiltLR, tiltFB, dir);
+
+  }, false);
+} else {
+  document.getElementById("debug").innerHTML = "Not supported."
+}
+
+function deviceOrientationHandler(tiltLR, tiltFB, dir) {
+
+    if (document.getElementById('record').checked) {
+		document.getElementById("doTiltLR").innerHTML = Math.round(tiltLR);
+		document.getElementById("doTiltFB").innerHTML = Math.round(tiltFB);
+		document.getElementById("doDirection").innerHTML = Math.round(dir);
+		
+		tag = document.getElementById("label").value;
+		writePoint(tiltLR, tiltFB, dir, tag);
+		document.getElementById("debug").innerHTML = "Recording..."
+    } else {
+        document.getElementById("debug").innerHTML = "Not recording."
+    }
+}
+
+function writePoint(x, y, z, tag) {
+
+	influent
+		.createHttpClient({
+			server: [
+				{
+					protocol: "http",
+					host:     "localhost",
+					port:     8086
+				}
+			],
+			username: "vince",
+			password: "password",
+			
+			database: "training2"
+		})
+		.then(function(client) {
+
+			// more explicit point
+			client
+				.write({
+					key: "data",
+					tags: {
+						label: tag,
+						id: measurement_tag
+					},
+					fields: {
+						gamma: x,
+						beta: y,
+						alpha: z
+					},
+					timestamp: Date.now()
+				})
+				.then(function() {
+					// ...
+				});
+		});
+}
+	
+</script>
+
+</html>
